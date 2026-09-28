@@ -1,0 +1,26 @@
+{
+  "name": "bodyverse-3d",
+  "version": "1.0.0",
+  "description": "BODYVERSE 3D - Cinematic Interactive 3D Human Anatomy Universe",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "build-model": "node scripts/build-master-anatomy.mjs",
+    "prepare-vendor": "node scripts/prepare-vendor.mjs"
+  },
+  "keywords": [
+    "threejs",
+    "webgl",
+    "anatomy",
+    "gsap",
+    "3d",
+    "interactive"
+  ],
+  "author": "BODYVERSE 3D",
+  "license": "MIT",
+  "dependencies": {
+    "gsap": "^3.12.5",
+    "three": "^0.170.0"
+  }
+}

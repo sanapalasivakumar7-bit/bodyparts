@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BODYVERSE 3D — Cinematic Human Anatomy Universe</title>
+
+  <!-- ─── GSAP UMD (loaded locally from vendor, with CDN fallback) ─── -->
+  <script src="./vendor/gsap.min.js"></script>
+  <script src="./vendor/ScrollTrigger.min.js"></script>
+  <script>
+    if (typeof gsap === 'undefined') {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"><\/script>');
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"><\/script>');
+    }
+  </script>
+
+  <!-- ─── Import Map for Three.js bare specifiers ─── -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three.module.js",
+      "three/": "./vendor/"
+    }
+  }
+  </script>
+
+  <style>
+    /* ════════════════════════════════════════════
+       BASE RESET & HOLOGRAPHIC THEME
+    ════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cyan:        #00f0ff;
+      --cyan-dim:    rgba(0, 240, 255, 0.22);
+      --cyan-glow:   rgba(0, 240, 255, 0.45);
+      --blue:        #00a8ff;
+      --violet:      #a855f7;
+      --pink:        #ff3cac;
+      --dark:        #040812;
+      --dark2:       #060d1e;
+      --glass:       rgba(4, 10, 24, 0.68);
+      --glass-card:  rgba(6, 14, 32, 0.82);
+      --border:      rgba(0, 240, 255, 0.22);
+      --border-lit:  rgba(0, 240, 255, 0.55);
+      --glow:        0 0 20px rgba(0, 240, 255, 0.22);
+      --font:        'SF Mono', 'Segoe UI Mono', 'Courier New', monospace;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--dark);
+      color: #e0f8ff;
+      font-family: var(--font);
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+
+    /* ════════════════════════════════════════════
+       WEBGL CANVAS — 3D VIEWPORT DOMINANCE
+    ════════════════════════════════════════════ */
+    #webgl-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw !important;
+      height: 100vh !important;
+      display: block;
+      z-index: 0;
+      touch-action: none;
+      cursor: grab;
+    }
+    #webgl-canvas:active {
+      cursor: grabbing;
+    }
+
+    /* ── ScrollTrigger Dummy Track ── */
+    #scroll-track {
+      position: fixed;
+      top: 0; left: 0;
+      width: 1px;
+      height: 800vh;
+      pointer-events: none;
+      z-index: -1;
+      visibility: hidden;
+    }
+
+    /* ════════════════════════════════════════════
+       LOADING SCREEN
+    ════════════════════════════════════════════ */
+    #loading-screen {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at center, #061128 0%, #03060f 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.8s ease;
+    }
+
+    .loading-logo {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 700;
+      letter-spacing: 0.24em;
+      color: var(--cyan);
+      text-shadow: 0 0 40px rgba(0,240,255,0.7), 0 0 80px rgba(0,240,255,0.3);
+      margin-bottom: 0.3rem;
+    }
+    .loading-sub {
+      font-size: 0.72rem;
+      letter-spacing: 0.4em;
+      color: rgba(0,240,255,0.55);
+      text-transform: uppercase;
+      margin-bottom: 3.5rem;
+    }
+    .loading-bar-track {
+      width: min(440px, 80vw);
+      height: 3px;
+      background: rgba(0,240,255,0.12);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 1.2rem;
+      box-shadow: inset 0 0 6px rgba(0,0,0,0.8);
+    }
+    #loading-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--violet), var(--cyan));
+      border-radius: 2px;
+      transition: width 0.3s ease;
+      box-shadow: 0 0 16px rgba(0,240,255,0.75);
+    }
+    #loading-percent {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: var(--cyan);
+      text-shadow: var(--glow);
+      margin-bottom: 0.6rem;
+      letter-spacing: 0.05em;
+    }
+    #loading-status-text {
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      color: rgba(0,240,255,0.5);
+      text-transform: uppercase;
+    }
+
+    /* ════════════════════════════════════════════
+       ERROR SCREEN
+    ════════════════════════════════════════════ */
+    #error-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--dark);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9998;
+    }
+    #error-screen.visible { display: flex; }
+    #error-screen h2 {
+      font-size: 1.8rem;
+      color: #ff4488;
+      text-shadow: 0 0 20px rgba(255,68,136,0.5);
+      margin-bottom: 1rem;
+    }
+    #error-screen p {
+      color: rgba(255,255,255,0.55);
+      font-size: 0.85rem;
+      letter-spacing: 0.1em;
+    }
+
+    /* ════════════════════════════════════════════
+       INTRO FLOATING TEXT
+    ════════════════════════════════════════════ */
+    #intro-floating-text {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      pointer-events: none;
+      z-index: 100;
+      opacity: 0;
+    }
+    #intro-floating-text h1 {
+      font-size: clamp(2.4rem, 8vw, 5.5rem);
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      background: linear-gradient(135deg, var(--cyan), var(--violet), var(--pink));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 40px rgba(0,240,255,0.45));
+    }
+    #intro-floating-text p {
+      font-size: clamp(0.65rem, 1.6vw, 0.9rem);
+      letter-spacing: 0.45em;
+      color: rgba(0,240,255,0.65);
+      text-transform: uppercase;
+      margin-top: 0.8rem;
+    }
+
+    /* ════════════════════════════════════════════
+       HOLOGRAPHIC HUD CONTROLS
+    ════════════════════════════════════════════ */
+    body:not(.ready) .hud { opacity: 0; pointer-events: none; }
+    body.ready .hud { opacity: 1; pointer-events: auto; transition: opacity 0.8s ease; }
+
+    /* ── CORNER LOGO ── */
+    #corner-logo {
+      position: fixed;
+      top: 1.4rem;
+      left: 1.6rem;
+      z-index: 500;
+      pointer-events: none;
+    }
+    .corner-logo-text {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.25em;
+      color: var(--cyan);
+      text-shadow: 0 0 24px rgba(0,240,255,0.55);
+    }
+    .corner-logo-sub {
+      font-size: 0.55rem;
+      letter-spacing: 0.32em;
+      color: rgba(0,240,255,0.4);
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    /* ── TOP SEARCH BAR ── */
+    #search-form {
+      position: fixed;
+      top: 1.4rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 500;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: min(390px, 88vw);
+    }
+    #search-input {
+      width: 100%;
+      padding: 0.6rem 1.4rem;
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 2rem;
+      color: var(--cyan);
+      font-family: var(--font);
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      outline: none;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      transition: all 0.25s ease;
+      box-shadow: 0 0 16px rgba(0,240,255,0.06);
+    }
+    #search-input::placeholder { color: rgba(0,240,255,0.35); }
+    #search-input:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 24px rgba(0,240,255,0.3);
+      background: rgba(4, 12, 28, 0.88);
+    }
+    #search-suggestions {
+      width: 100%;
+      background: var(--glass-card);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 1rem 1rem;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      max-height: 240px;
+      overflow-y: auto;
+      display: none;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+    }
+    #search-suggestions.open { display: block; }
+    .suggestion-item {
+      padding: 0.55rem 1.2rem;
+      cursor: pointer;
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid rgba(0,240,255,0.08);
+      transition: background 0.15s;
+    }
+    .suggestion-item:hover { background: rgba(0,240,255,0.12); }
+    .suggestion-name { font-size: 0.78rem; color: var(--cyan); }
+    .suggestion-sys { font-size: 0.65rem; color: rgba(168,85,247,0.85); letter-spacing: 0.1em; }
+    .suggestion-item.no-match { color: rgba(255,255,255,0.35); font-size: 0.75rem; cursor: default; }
+
+    /* ── TOOLBAR (top right) ── */
+    #toolbar {
+      position: fixed;
+      top: 1.4rem;
+      right: 1.6rem;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      z-index: 500;
+    }
+    .tool-btn {
+      width: 40px; height: 40px;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      background: var(--glass);
+      color: rgba(0,240,255,0.7);
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(20px);
+      transition: all 0.2s ease;
+    }
+    .tool-btn:hover, .tool-btn.active {
+      border-color: var(--cyan);
+      color: var(--cyan);
+      box-shadow: var(--glow);
+    }
+    .tool-btn-pill {
+      height: 40px;
+      padding: 0 0.9rem;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: var(--glass);
+      color: rgba(0,240,255,0.8);
+      font-family: var(--font);
+      font-size: 0.65rem;
+      letter-spacing: 0.14em;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 0.4rem;
+      backdrop-filter: blur(20px);
+      transition: all 0.25s ease;
+    }
+    .tool-btn-pill:hover, .tool-btn-pill.zoom-active {
+      border-color: var(--cyan);
+      color: var(--cyan);
+      box-shadow: var(--glow);
+      background: rgba(0,240,255,0.12);
+    }
+
+    /* ── 8 & 9. DEPTH HUD (left side — scroll & exploded anatomy controller) ── */
+    #depth-hud {
+      position: fixed;
+      left: 1.6rem;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.7rem;
+      z-index: 400;
+      transition: opacity 0.3s;
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 1.2rem;
+      padding: 1.0rem 0.6rem;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 0 20px rgba(0,240,255,0.06);
+    }
+    #depth-hud.hidden { opacity: 0; pointer-events: none; }
+    .depth-label {
+      font-size: 0.60rem;
+      letter-spacing: 0.25em;
+      color: rgba(0,240,255,0.5);
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    #depth-track-clickable {
+      width: 8px;
+      height: 180px;
+      background: rgba(0,240,255,0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+      cursor: ns-resize;
+      box-shadow: inset 0 0 8px rgba(0,0,0,0.6);
+    }
+    #depth-fill {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 0%;
+      background: linear-gradient(0deg, var(--violet), var(--cyan));
+      border-radius: 4px;
+      transition: height 0.15s ease-out;
+      box-shadow: 0 0 12px rgba(0,240,255,0.6);
+    }
+    #depth-value {
+      font-size: 0.75rem;
+      color: var(--cyan);
+      font-weight: 700;
+      text-shadow: var(--glow);
+    }
+    #depth-stage {
+      font-size: 0.55rem;
+      letter-spacing: 0.14em;
+      color: rgba(0,240,255,0.55);
+      text-transform: uppercase;
+      writing-mode: vertical-rl;
+      max-height: 110px;
+      text-align: center;
+    }
+    #btn-explode-toggle {
+      padding: 0.35rem 0.6rem;
+      border: 1px solid var(--border);
+      border-radius: 0.6rem;
+      background: transparent;
+      color: var(--cyan);
+      font-family: var(--font);
+      font-size: 0.58rem;
+      letter-spacing: 0.15em;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    #btn-explode-toggle:hover, #btn-explode-toggle.active {
+      background: rgba(0,240,255,0.15);
+      border-color: var(--cyan);
+      box-shadow: var(--glow);
+    }
+
+    /* ── HOVER INDICATOR ── */
+    #hover-indicator {
+      position: fixed;
+      pointer-events: none;
+      z-index: 800;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity 0.15s, transform 0.15s;
+      background: rgba(4, 10, 24, 0.88);
+      border: 1px solid var(--border-lit);
+      border-radius: 0.5rem;
+      padding: 0.35rem 0.65rem;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 0 16px rgba(0,240,255,0.25);
+    }
+    #hover-indicator.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .hover-tag {
+      display: block;
+      font-size: 0.55rem;
+      letter-spacing: 0.22em;
+      color: var(--violet);
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .hover-title {
+      display: block;
+      font-size: 0.82rem;
+      color: var(--cyan);
+      font-weight: 700;
+      text-shadow: 0 0 10px rgba(0,240,255,0.5);
+    }
+
+    /* ── 4. FLOATING HOLOGRAPHIC INFORMATION PANEL (right side) ── */
+    #info-panel {
+      position: fixed;
+      right: 1.8rem;
+      top: 50%;
+      transform: translateY(-50%) translateX(calc(100% + 3rem));
+      width: min(340px, 90vw);
+      background: var(--glass-card);
+      border: 1px solid var(--border-lit);
+      border-radius: 1.2rem;
+      padding: 1.5rem;
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px);
+      box-shadow: 0 0 35px rgba(0, 240, 255, 0.18), inset 0 1px 0 rgba(255,255,255,0.08);
+      z-index: 600;
+      transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    #info-panel.open {
+      transform: translateY(-50%) translateX(0);
+    }
+    #info-system-badge {
+      display: inline-block;
+      font-size: 0.58rem;
+      letter-spacing: 0.26em;
+      color: var(--dark);
+      background: var(--cyan);
+      border-radius: 0.35rem;
+      padding: 0.22rem 0.65rem;
+      margin-bottom: 0.6rem;
+      font-weight: 700;
+      box-shadow: 0 0 12px rgba(0,240,255,0.4);
+    }
+    #info-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #ffffff;
+      text-shadow: 0 0 18px rgba(0,240,255,0.6);
+      margin-bottom: 0.2rem;
+      line-height: 1.2;
+      letter-spacing: 0.05em;
+    }
+    #info-latin {
+      font-size: 0.70rem;
+      color: rgba(168,85,247,0.85);
+      font-style: italic;
+      margin-bottom: 0.8rem;
+    }
+    .info-section-label {
+      font-size: 0.58rem;
+      letter-spacing: 0.22em;
+      color: var(--cyan);
+      text-transform: uppercase;
+      margin-bottom: 0.25rem;
+      margin-top: 0.6rem;
+      font-weight: 700;
+    }
+    #info-description {
+      font-size: 0.75rem;
+      color: rgba(224, 248, 255, 0.82);
+      line-height: 1.55;
+    }
+    #info-function {
+      font-size: 0.75rem;
+      color: rgba(224, 248, 255, 0.75);
+      line-height: 1.55;
+    }
+    #info-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-top: 0.8rem;
+      margin-bottom: 1.2rem;
+    }
+    .stat-chip {
+      background: rgba(0,240,255,0.06);
+      border: 1px solid rgba(0,240,255,0.18);
+      border-radius: 0.6rem;
+      padding: 0.4rem 0.6rem;
+    }
+    .stat-label {
+      display: block;
+      font-size: 0.54rem;
+      letter-spacing: 0.12em;
+      color: rgba(0,240,255,0.5);
+      text-transform: uppercase;
+      margin-bottom: 0.15rem;
+    }
+    .stat-value {
+      display: block;
+      font-size: 0.80rem;
+      color: var(--cyan);
+      font-weight: 700;
+    }
+    .info-actions {
+      display: flex;
+      gap: 0.45rem;
+    }
+    #info-focus-btn, #info-reset-btn, #info-close {
+      flex: 1;
+      padding: 0.48rem 0.3rem;
+      border-radius: 0.55rem;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--cyan);
+      font-family: var(--font);
+      font-size: 0.64rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    #info-focus-btn:hover {
+      background: rgba(0,240,255,0.15);
+      border-color: var(--cyan);
+      box-shadow: 0 0 12px rgba(0,240,255,0.3);
+    }
+    #info-reset-btn:hover {
+      background: rgba(168,85,247,0.15);
+      border-color: var(--violet);
+      color: var(--violet);
+    }
+    #info-close:hover {
+      background: rgba(255,60,172,0.15);
+      border-color: var(--pink);
+      color: var(--pink);
+    }
+
+    /* ── 6. BODY SYSTEMS SELECTOR ── */
+    #systems-hud {
+      position: fixed;
+      bottom: 6.2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      justify-content: center;
+      z-index: 400;
+      max-width: 660px;
+    }
+    #systems-hud.active { display: flex; }
+    .sys-btn {
+      padding: 0.38rem 0.95rem;
+      border: 1px solid var(--border);
+      border-radius: 1.5rem;
+      background: var(--glass);
+      color: rgba(0,240,255,0.7);
+      font-family: var(--font);
+      font-size: 0.64rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      cursor: pointer;
+      backdrop-filter: blur(16px);
+      transition: all 0.22s;
+    }
+    .sys-btn:hover {
+      border-color: var(--cyan);
+      color: var(--cyan);
+      box-shadow: var(--glow);
+    }
+    .sys-btn.active {
+      background: var(--cyan);
+      border-color: var(--cyan);
+      color: var(--dark);
+      font-weight: 700;
+      box-shadow: 0 0 16px rgba(0,240,255,0.6);
+    }
+
+    /* ── 7. ORGANS SELECTOR ── */
+    #organs-hud {
+      position: fixed;
+      bottom: 6.2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      z-index: 400;
+      max-width: 720px;
+    }
+    #organs-hud.active { display: flex; }
+    .organ-tab {
+      padding: 0.4rem 0.9rem;
+      border: 1px solid var(--border);
+      border-radius: 1.5rem;
+      background: var(--glass);
+      color: rgba(168,85,247,0.75);
+      font-family: var(--font);
+      font-size: 0.64rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      cursor: pointer;
+      backdrop-filter: blur(16px);
+      transition: all 0.22s;
+    }
+    .organ-tab:hover {
+      border-color: var(--violet);
+      color: var(--violet);
+      box-shadow: 0 0 14px rgba(168,85,247,0.4);
+    }
+    .organ-tab.active {
+      background: var(--violet);
+      border-color: var(--violet);
+      color: var(--dark);
+      font-weight: 700;
+      box-shadow: 0 0 18px rgba(168,85,247,0.65);
+    }
+    #organ-reset-btn {
+      padding: 0.4rem 0.9rem;
+      border: 1px solid var(--border);
+      border-radius: 1.5rem;
+      background: rgba(0,240,255,0.08);
+      color: var(--cyan);
+      font-family: var(--font);
+      font-size: 0.64rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.22s;
+    }
+    #organ-reset-btn:hover {
+      border-color: var(--cyan);
+      box-shadow: var(--glow);
+    }
+
+    /* ── JOURNEYS HUD ── */
+    #journeys-hud {
+      position: fixed;
+      bottom: 6.2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.8rem;
+      z-index: 400;
+      width: min(520px, 90vw);
+    }
+    #journeys-hud.active { display: flex; }
+    .journey-cards-row {
+      display: flex;
+      gap: 0.6rem;
+    }
+    .journey-card {
+      padding: 0.45rem 1.1rem;
+      border: 1px solid var(--border);
+      border-radius: 1.2rem;
+      background: var(--glass);
+      color: rgba(0,240,255,0.7);
+      font-family: var(--font);
+      font-size: 0.64rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      cursor: pointer;
+      backdrop-filter: blur(16px);
+      transition: all 0.2s;
+    }
+    .journey-card:hover { border-color: var(--cyan); color: var(--cyan); }
+    .journey-card.active {
+      background: var(--cyan);
+      border-color: var(--cyan);
+      color: var(--dark);
+      font-weight: 700;
+      box-shadow: 0 0 16px rgba(0,240,255,0.5);
+    }
+    .journey-milestone-box {
+      background: var(--glass-card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 0.9rem 1.4rem;
+      backdrop-filter: blur(20px);
+      text-align: center;
+      width: 100%;
+    }
+    #journey-step-indicator {
+      display: block;
+      font-size: 0.60rem;
+      letter-spacing: 0.22em;
+      color: var(--cyan);
+      text-transform: uppercase;
+      margin-bottom: 0.3rem;
+    }
+    #journey-milestone-title {
+      display: block;
+      font-size: 1.05rem;
+      color: #ffffff;
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+    }
+    #journey-milestone-desc {
+      display: block;
+      font-size: 0.72rem;
+      color: rgba(224,248,255,0.75);
+      line-height: 1.5;
+    }
+    .journey-controls {
+      display: flex;
+      gap: 0.6rem;
+    }
+    .journey-ctrl-btn {
+      padding: 0.4rem 1.0rem;
+      border: 1px solid var(--border);
+      border-radius: 1.2rem;
+      background: transparent;
+      color: rgba(0,240,255,0.7);
+      font-family: var(--font);
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .journey-ctrl-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+    #journey-play-btn {
+      background: rgba(0,240,255,0.12);
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    /* ── QUIZ HUD ── */
+    #quiz-hud {
+      position: fixed;
+      top: 50%;
+      right: 1.6rem;
+      transform: translateY(-50%);
+      display: none;
+      flex-direction: column;
+      gap: 0.8rem;
+      z-index: 400;
+      width: min(310px, 90vw);
+    }
+    #quiz-hud.active { display: flex; }
+    .quiz-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.6rem 1rem;
+      background: var(--glass-card);
+      border: 1px solid var(--border);
+      border-radius: 0.8rem;
+      backdrop-filter: blur(20px);
+    }
+    .quiz-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+    .quiz-stat-label {
+      font-size: 0.55rem;
+      letter-spacing: 0.15em;
+      color: rgba(0,240,255,0.5);
+      text-transform: uppercase;
+    }
+    .quiz-stat-value {
+      font-size: 1.1rem;
+      color: var(--cyan);
+      font-weight: 700;
+    }
+    .quiz-step-text {
+      font-size: 0.6rem;
+      color: rgba(0,240,255,0.6);
+      letter-spacing: 0.15em;
+    }
+    .quiz-question-box {
+      background: var(--glass-card);
+      border: 1px solid var(--border);
+      border-radius: 0.8rem;
+      padding: 1rem;
+      backdrop-filter: blur(20px);
+    }
+    #quiz-question-text {
+      display: block;
+      font-size: 0.82rem;
+      color: #e0f8ff;
+      line-height: 1.6;
+    }
+    #quiz-feedback {
+      display: none;
+      padding: 0.7rem 1rem;
+      border-radius: 0.8rem;
+      font-size: 0.72rem;
+      line-height: 1.5;
+      border: 1px solid;
+    }
+    #quiz-feedback strong { display: block; margin-bottom: 0.2rem; font-size: 0.78rem; }
+    #quiz-feedback.correct {
+      border-color: rgba(0,240,255,0.4);
+      background: rgba(0,240,255,0.1);
+      color: var(--cyan);
+    }
+    #quiz-feedback.incorrect {
+      border-color: rgba(255,60,172,0.4);
+      background: rgba(255,60,172,0.1);
+      color: var(--pink);
+    }
+    .quiz-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .quiz-btn {
+      flex: 1;
+      padding: 0.5rem;
+      border-radius: 0.6rem;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--cyan);
+      font-family: var(--font);
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .quiz-btn:hover { background: rgba(0,240,255,0.15); border-color: var(--cyan); }
+
+    /* ── 10. NAVIGATION DOCK (bottom center) ── */
+    #nav-dock {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      background: var(--glass-card);
+      border: 1px solid var(--border-lit);
+      border-radius: 2rem;
+      padding: 0.45rem 0.8rem;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      box-shadow: 0 0 30px rgba(0,240,255,0.18), inset 0 1px 0 rgba(255,255,255,0.06);
+      z-index: 500;
+    }
+    .nav-btn {
+      padding: 0.5rem 1.1rem;
+      border: 1px solid transparent;
+      border-radius: 1.5rem;
+      background: transparent;
+      color: rgba(0,240,255,0.7);
+      font-family: var(--font);
+      font-size: 0.68rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      white-space: nowrap;
+    }
+    .nav-btn:hover {
+      color: var(--cyan);
+      border-color: rgba(0,240,255,0.35);
+      background: rgba(0,240,255,0.08);
+    }
+    .nav-btn.active {
+      color: var(--dark);
+      background: var(--cyan);
+      border-color: var(--cyan);
+      box-shadow: 0 0 20px rgba(0,240,255,0.7);
+      font-weight: 700;
+    }
+
+    /* ── 5. HOLOGRAPHIC FLOATING TOAST NOTIFICATION ── */
+    #holographic-toast {
+      position: fixed;
+      bottom: 5.5rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(6, 14, 32, 0.92);
+      border: 1px solid var(--cyan);
+      border-radius: 2rem;
+      padding: 0.55rem 1.4rem;
+      color: var(--cyan);
+      font-family: var(--font);
+      font-size: 0.72rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      pointer-events: none;
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 900;
+      box-shadow: 0 0 24px rgba(0,240,255,0.4);
+      white-space: nowrap;
+    }
+    #holographic-toast.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ════════════════════════════════════════════
+       MINIMALIST SCROLLBAR
+    ════════════════════════════════════════════ */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,240,255,0.25); border-radius: 2px; }
+  </style>
+</head>
+
+<body>
+  <!-- ── 1. WebGL Canvas (Centered, dominant 3D human presentation) ── -->
+  <canvas id="webgl-canvas"></canvas>
+
+  <!-- ── ScrollTrigger Dummy Track ── -->
+  <div id="scroll-track"></div>
+
+  <!-- ══════════════════════════════════════════════
+       LOADING SCREEN
+  ══════════════════════════════════════════════ -->
+  <div id="loading-screen">
+    <div class="loading-logo">BODYVERSE 3D</div>
+    <div class="loading-sub">Cinematic Human Anatomy Universe</div>
+    <div class="loading-bar-track">
+      <div id="loading-bar-fill"></div>
+    </div>
+    <div id="loading-percent">0%</div>
+    <div id="loading-status-text">Initialising WebGL environment...</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       ERROR SCREEN
+  ══════════════════════════════════════════════ -->
+  <div id="error-screen">
+    <h2>⚠ SYSTEM FAILURE</h2>
+    <p>Unable to load the 3D anatomy model.</p>
+    <p style="margin-top:0.5rem; font-size:0.7rem; color:rgba(255,255,255,0.3);">
+      Ensure <code>/models/anatomy/human-anatomy.glb</code> is accessible.
+    </p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       INTRO FLOATING TEXT
+  ══════════════════════════════════════════════ -->
+  <div id="intro-floating-text">
+    <h1>BODYVERSE 3D</h1>
+    <p>Enter the Human Anatomy Universe</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       CORNER LOGO
+  ══════════════════════════════════════════════ -->
+  <div id="corner-logo" class="hud">
+    <div class="corner-logo-text">BODYVERSE</div>
+    <div class="corner-logo-sub">3D · Human Anatomy Universe</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       5. TOP SEARCH BAR
+  ══════════════════════════════════════════════ -->
+  <form id="search-form" class="hud">
+    <input
+      id="search-input"
+      type="text"
+      placeholder="Search anatomy... (heart, skull, liver, brain, lungs)"
+      autocomplete="off"
+    />
+    <div id="search-suggestions"></div>
+  </form>
+
+  <!-- ══════════════════════════════════════════════
+       TOOLBAR (top right)
+  ══════════════════════════════════════════════ -->
+  <div id="toolbar" class="hud">
+    <button id="btn-wheel-mode" class="tool-btn-pill" title="Toggle Wheel Mode: Layer Scroll vs 3D Zoom">
+      ↕ <span>LAYERS</span>
+    </button>
+    <button id="btn-reset-view" class="tool-btn" title="Reset Camera View">⌖</button>
+    <button id="btn-audio" class="tool-btn" title="Sound On">
+      <span class="audio-icon">🔊</span>
+    </button>
+    <button id="btn-fullscreen" class="tool-btn" title="Fullscreen">⛶</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       8 & 9. DEPTH HUD (left side — scroll & exploded controller)
+  ══════════════════════════════════════════════ -->
+  <div id="depth-hud" class="hud">
+    <span class="depth-label">DEPTH</span>
+    <div id="depth-track-clickable" title="Click or drag to scrub anatomy depth layers">
+      <div id="depth-fill"></div>
+    </div>
+    <div id="depth-value">0%</div>
+    <div id="depth-stage">100% COMPLETE HUMAN</div>
+    <button id="btn-explode-toggle" title="Toggle Exploded Anatomy">💥 EXPLODE</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       HOVER INDICATOR
+  ══════════════════════════════════════════════ -->
+  <div id="hover-indicator">
+    <span class="hover-tag"></span>
+    <span class="hover-title"></span>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       4. FLOATING HOLOGRAPHIC INFORMATION PANEL
+  ══════════════════════════════════════════════ -->
+  <div id="info-panel">
+    <div id="info-system-badge">ANATOMY</div>
+    <div id="info-title">Structure</div>
+    <div id="info-latin"></div>
+    <div class="info-section-label">Description</div>
+    <div id="info-description"></div>
+    <div class="info-section-label">Function</div>
+    <div id="info-function"></div>
+    <div class="info-section-label">Key Facts</div>
+    <div id="info-stats"></div>
+    <div class="info-actions">
+      <button id="info-focus-btn">⊕ Focus</button>
+      <button id="info-reset-btn">⌖ Reset</button>
+      <button id="info-close">✕ Close</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       6. BODY SYSTEMS HUD
+  ══════════════════════════════════════════════ -->
+  <div id="systems-hud" class="hud">
+    <button class="sys-btn active" data-system="all">All Systems</button>
+    <button class="sys-btn" data-system="skeletal">Skeletal</button>
+    <button class="sys-btn" data-system="muscular">Muscular</button>
+    <button class="sys-btn" data-system="circulatory">Circulatory</button>
+    <button class="sys-btn" data-system="respiratory">Respiratory</button>
+    <button class="sys-btn" data-system="digestive">Digestive</button>
+    <button class="sys-btn" data-system="nervous">Nervous</button>
+    <button class="sys-btn" data-system="urinary">Urinary</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       7. ORGANS HUD
+  ══════════════════════════════════════════════ -->
+  <div id="organs-hud" class="hud">
+    <button class="organ-tab active" data-organ="heart">Heart</button>
+    <button class="organ-tab" data-organ="brain">Brain</button>
+    <button class="organ-tab" data-organ="left_lung">Left Lung</button>
+    <button class="organ-tab" data-organ="right_lung">Right Lung</button>
+    <button class="organ-tab" data-organ="liver">Liver</button>
+    <button class="organ-tab" data-organ="stomach">Stomach</button>
+    <button class="organ-tab" data-organ="left_kidney">Kidneys</button>
+    <button class="organ-tab" data-organ="intestines">Intestines</button>
+    <button id="organ-reset-btn">⌖ Reset View</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       JOURNEYS HUD
+  ══════════════════════════════════════════════ -->
+  <div id="journeys-hud" class="hud">
+    <div class="journey-cards-row">
+      <div class="journey-card active" data-journey="blood">🩸 Blood</div>
+      <div class="journey-card" data-journey="food">🍎 Digestion</div>
+      <div class="journey-card" data-journey="air">💨 Respiration</div>
+    </div>
+    <div class="journey-milestone-box">
+      <span id="journey-step-indicator">STEP 1 OF 7</span>
+      <span id="journey-milestone-title">Journey Begins</span>
+      <span id="journey-milestone-desc">Follow the path through the human body.</span>
+    </div>
+    <div class="journey-controls">
+      <button class="journey-ctrl-btn" id="journey-prev-btn">◀ Prev</button>
+      <button class="journey-ctrl-btn" id="journey-play-btn">▶ PLAY</button>
+      <button class="journey-ctrl-btn" id="journey-next-btn">Next ▶</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       QUIZ HUD
+  ══════════════════════════════════════════════ -->
+  <div id="quiz-hud" class="hud">
+    <div class="quiz-header">
+      <div class="quiz-stat">
+        <span class="quiz-stat-label">Score</span>
+        <span class="quiz-stat-value" id="quiz-score">0</span>
+      </div>
+      <div class="quiz-stat">
+        <span class="quiz-step-text" id="quiz-step">QUESTION 0 OF 7</span>
+      </div>
+      <div class="quiz-stat">
+        <span class="quiz-stat-label">Streak</span>
+        <span class="quiz-stat-value" id="quiz-streak">0</span>
+      </div>
+    </div>
+    <div class="quiz-question-box">
+      <span id="quiz-question-text">Click on the correct 3D anatomical structure when prompted.</span>
+    </div>
+    <div id="quiz-feedback"></div>
+    <div class="quiz-actions">
+      <button class="quiz-btn" id="quiz-next-btn" style="display:none">Next →</button>
+      <button class="quiz-btn" id="quiz-restart-btn">↺ Restart</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       10. NAVIGATION DOCK (bottom center)
+  ══════════════════════════════════════════════ -->
+  <nav id="nav-dock" class="hud">
+    <button class="nav-btn active" data-mode="explore">⊕ Explore</button>
+    <button class="nav-btn" data-mode="systems">⬡ Systems</button>
+    <button class="nav-btn" data-mode="organs">◎ Organs</button>
+    <button class="nav-btn" data-mode="journeys">↝ Journeys</button>
+    <button class="nav-btn" data-mode="quiz">? Quiz</button>
+  </nav>
+
+  <!-- ══════════════════════════════════════════════
+       APP ENTRY POINT — loaded as ES module AFTER globals
+  ══════════════════════════════════════════════ -->
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
