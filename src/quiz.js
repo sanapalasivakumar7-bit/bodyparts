@@ -1,4 +1,4 @@
-import * as THREE from '../vendor/three.module.js';
+import * as THREE from '/three.module.js';
 import { QUIZ_QUESTIONS } from './config.js';
 import { sound } from './audio.js';
 

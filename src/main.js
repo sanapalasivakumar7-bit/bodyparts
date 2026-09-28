@@ -5,7 +5,7 @@ import { OrganExplorer } from './organExplorer.js';
 import { BodyJourneys } from './journeys.js';
 import { AnatomyQuiz } from './quiz.js';
 import { UIManager } from './ui.js';
-import { gsap } from '../vendor/gsap.js';
+import { gsap } from '/gsap.js';
 import { sound } from './audio.js';
 
 class BodyverseApp {

@@ -1,6 +1,6 @@
-import * as THREE from '../vendor/three.module.js';
-import { gsap } from '../vendor/gsap.js';
-import { ScrollTrigger } from '../vendor/ScrollTrigger.js';
+import * as THREE from '/three.module.js';
+import { gsap } from '/gsap.js';
+import { ScrollTrigger } from '/ScrollTrigger.js';
 
 if (gsap && ScrollTrigger && gsap.registerPlugin) {
   gsap.registerPlugin(ScrollTrigger);

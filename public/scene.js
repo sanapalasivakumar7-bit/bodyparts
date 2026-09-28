@@ -1,5 +1,5 @@
-import * as THREE from '../vendor/three.module.js';
-import { OrbitControls } from '../vendor/OrbitControls.js';
+import * as THREE from '/three.module.js';
+import { OrbitControls } from '/OrbitControls.js';
 
 export class AppScene {
   constructor(canvas) {

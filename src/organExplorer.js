@@ -1,5 +1,5 @@
-import * as THREE from '../vendor/three.module.js';
-import { GLTFLoader } from '../vendor/GLTFLoader.js';
+import * as THREE from '/three.module.js';
+import { GLTFLoader } from '/GLTFLoader.js';
 import { sound } from './audio.js';
 import { ANATOMY_DATA } from './config.js';
 
