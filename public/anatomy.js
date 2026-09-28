@@ -52,7 +52,7 @@ export class AnatomyManager {
           const ratio = xhr.loaded / xhr.total;
           this.onProgress(Math.min(ratio, 0.99), false);
         } else if (this.onProgress) {
-          this.onProgress(0.75, false);
+          this.onProgress(0.95, false);
         }
       },
       (err) => {
