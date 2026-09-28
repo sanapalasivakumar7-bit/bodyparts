@@ -117,7 +117,7 @@ class BodyverseApp {
     const sIdx = Math.min(statuses.length - 1, Math.floor(progress * statuses.length));
     if (this.loadingStatus) this.loadingStatus.textContent = statuses[sIdx];
 
-    if (isComplete) {
+    if (isComplete) { console.log('[BODYVERSE] Loading reached 100%');
       setTimeout(() => {
         this.organExp.attachMeshesFromMaster(this.anatomy.registry);
         this.playIntroSequence();
