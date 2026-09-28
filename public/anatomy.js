@@ -1,6 +1,6 @@
-import * as THREE from '../vendor/three.module.js';
-import { GLTFLoader } from '../vendor/GLTFLoader.js';
-import { gsap } from '../vendor/gsap.js';
+import * as THREE from '/three.module.js';
+import { GLTFLoader } from '/GLTFLoader.js';
+import { gsap } from '/gsap.js';
 import { ANATOMY_MODEL_URL, ANATOMY_DATA, SYSTEMS } from './config.js';
 import { sound } from './audio.js';
 
